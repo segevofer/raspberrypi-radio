@@ -1,0 +1,49 @@
+#! /bin/sh
+
+NOW=`date +%s`
+URL=http://stream-tx3.radioparadise.com/ogg-96?$NOW
+PID=/var/run/rp.pid
+LOG=/var/log/rp
+echo $URL
+
+stop() {
+	if [ -f $PID ]; then
+		kill -9 `cat $PID`
+		rm -rf $PID
+	fi
+	ps -ef | grep omxplayer | grep -v grep | awk '{print $2}' | xargs -n1 kill -9 >/dev/null 2>&1
+}
+
+player() {
+	#/usr/bin/omxplayer -o local $URL >>$LOG 2>&1
+	python /home/pi/radiopy-0.6/radio.py Radio Paradise
+	return 1
+}
+
+loop_player() {
+	until player; do
+		echo "Respawning..." 
+		sleep 2
+	done
+}
+
+case "$1" in
+  start)
+	stop
+	echo -n "Starting Radio Paradise... "
+	loop_player & >>$LOG 2>&1	
+	echo $! > $PID
+	echo "Success!"
+	exit 0
+	;;
+  stop)
+	stop
+	;;
+  *)
+	echo  "Usage: /etc/init.d/rp {start|stop}"
+	exit 1	
+
+esac
+
+exit 0
+
